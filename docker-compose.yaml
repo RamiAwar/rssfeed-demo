@@ -1,0 +1,97 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:14.4
+    container_name: rssfeed-db
+    environment:
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=rssfeed
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:latest
+    container_name: rssfeed-redis
+    ports:
+      - "6379:6379"
+
+  celery_worker:
+    build:
+      context: .
+      target: prod
+      dockerfile: Dockerfile
+    command: celery -A background.tasks worker --loglevel=info
+    volumes:
+      - .:/celery
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+      - redis
+
+  celery_beat:
+    build:
+      context: .
+      target: prod
+      dockerfile: Dockerfile
+    command: celery -A background.tasks beat -l INFO
+    volumes:
+      - .:/app
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+      - redis
+
+  celery_flower:
+    build:
+      context: .
+      target: prod
+      dockerfile: Dockerfile
+    command: celery -A background.tasks flower --address='0.0.0.0' -l INFO
+    volumes:
+      - .:/app
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "5555:5555"
+
+  api:
+    build:
+      context: .
+      target: prod
+      dockerfile: Dockerfile
+    container_name: rssfeed-api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 1s
+      retries: 5
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    env_file: .env.prod
+    command: uvicorn api.main:app --port=8000 --host=0.0.0.0
+    ports:
+      - "8000:8000"
+
+  test:
+    env_file: .env.test
+    container_name: test
+    volumes:
+      - .:/app
+    build:
+      context: .
+      target: test
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - redis
+    command: >
+      sh -c "pytest ."
