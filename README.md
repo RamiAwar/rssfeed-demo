@@ -11,7 +11,7 @@ This service provides an API to manage RSS feeds and a background process to upd
 
 - Using PostgreSQL for the database
 
-- Using SQLModel for the ORM (still in alpha and lacking docs, but I wanted to try it out as I've never touched SQLAlchemy! Downside is async features not documented yet so couldn't use those, and documentation split between sqlmodel and sqlalchemy)
+- Using SQLModel for the ORM (still in alpha and lacking docs, but I wanted to try it out! Did not go for async setup, but that follows SQLAlchemy's closely.)
 
 ### Running the service
 
